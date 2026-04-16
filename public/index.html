@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="widget.css">
+</head>
+
+<body>
+
+<!-- Floating launcher -->
+<div id="ai-launcher" onclick="toggleWidget()">
+🤖
+</div>
+
+<!-- Widget -->
+<div id="ai-widget" class="hidden">
+
+  <div id="ai-header">
+    AI Voice Assistant
+    <span id="close-btn" onclick="toggleWidget()">✕</span>
+  </div>
+
+<div id="assistant-area" class="hidden">
+
+    <div class="bot-avatar"></div>
+
+    <div id="voice-wave">
+      <span></span>
+      <span></span>
+      <span></span>
+      <span></span>
+      <span></span>
+    </div>
+
+    <div id="bot-status">Tap call to start</div>
+
+    <div id="mic-indicator">🎤</div>
+
+  </div>
+
+  <div class="call-controls">
+    <button id="call-btn" onclick="startCall()">📞</button>
+<button id="end-btn" onclick="stopCall()" style="display:none;">❌</button>
+  </div>
+
+</div>
+
+<script src="widget.js"></script>
+
+</body>
+</html>
+
