@@ -61,8 +61,11 @@ async function getEmbedding(text) {
     const normalized = text.toLowerCase().trim();
     const cacheKey = `emb:${normalized}`;
 
-    // ✅ cache check
-    const cached = await redis.get(cacheKey);
+    let cached = null;
+    try {
+      cached = await redis.get(cacheKey);
+    } catch {}
+
     if (cached) {
       console.log("⚡ Cache hit");
       return JSON.parse(cached);
@@ -89,8 +92,9 @@ async function getEmbedding(text) {
 
     const embedding = json.data[0].embedding;
 
-    // ✅ save cache (1 day)
-    await redis.set(cacheKey, JSON.stringify(embedding), "EX", 86400);
+    try {
+      await redis.set(cacheKey, JSON.stringify(embedding), "EX", 86400);
+    } catch {}
 
     return embedding;
   } catch (err) {
@@ -115,12 +119,10 @@ function cleanText(text) {
    SAFE EMBEDDING PARSE
 ========================= */
 function parseEmbeddingSafe(value) {
-  if (!value || typeof value !== "string") return null;
-  if (!value.startsWith("[")) return null;
-
   try {
-    const parsed = JSON.parse(value);
-    return Array.isArray(parsed) ? parsed : null;
+    if (!value) return null;
+    if (Array.isArray(value)) return value;
+    return JSON.parse(value);
   } catch {
     return null;
   }
@@ -148,7 +150,50 @@ function mergeChunks(chunks) {
 }
 
 /* =========================
-   CHATGPT-LIKE RESPONSE
+   🔥 NEW: RERANK FUNCTION
+========================= */
+async function rerankChunks(question, chunks) {
+  try {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        temperature: 0,
+        messages: [
+          {
+            role: "system",
+            content: "Pick the most relevant chunk number.",
+          },
+          {
+            role: "user",
+            content: `
+Question: ${question}
+
+Chunks:
+${chunks.map((c, i) => `${i + 1}. ${c.text}`).join("\n")}
+
+Return only number.
+`,
+          },
+        ],
+      }),
+    });
+
+    const json = await res.json();
+    const index = parseInt(json.choices?.[0]?.message?.content?.trim());
+
+    return chunks[index - 1] || chunks[0];
+  } catch {
+    return chunks[0];
+  }
+}
+
+/* =========================
+   CHATGPT RESPONSE
 ========================= */
 async function askAI(context, question) {
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -160,28 +205,27 @@ async function askAI(context, question) {
     body: JSON.stringify({
       model: "gpt-4o-mini",
       temperature: 0.3,
+      max_tokens: 80,
       messages: [
         {
           role: "system",
-      content: `
-You are a smart AI assistant.
-
-Instructions:
-- Use the provided context to answer the question.
-- The answer is likely present — extract it clearly.
-- Rephrase in simple, natural language.
-- Combine multiple pieces if needed.
-
-IMPORTANT:
-- Do NOT say "I couldn't find" unless absolutely nothing matches.
-- Even partial information → try to answer.
-
-Keep answer short and clear.
+          content: `
+Use context to answer clearly.
+Do NOT say "not found" unless truly empty.
+Keep answer short.
 `,
         },
         {
           role: "user",
-          content: `Context:\n${context}\n\nQuestion:\n${question}`,
+          content: `
+Context:
+${context}
+
+Question:
+${question}
+
+Answer:
+`,
         },
       ],
     }),
@@ -204,14 +248,11 @@ export async function answerFromBook(question, userId) {
     `SELECT chunk_text, embedding 
      FROM document_chunks 
      WHERE user_id = ?`,
-    [userId],
+    [userId]
   );
 
   if (!rows.length) return "No data found.";
 
-  /* =========================
-     HYBRID SEARCH (VECTOR + KEYWORD)
-  ========================= */
   const ranked = rows
     .map((r) => {
       const embedding = parseEmbeddingSafe(r.embedding);
@@ -223,14 +264,9 @@ export async function answerFromBook(question, userId) {
       const lowerText = text.toLowerCase();
       const lowerQuery = question.toLowerCase();
 
-      // 🔥 keyword boost
       let keywordScore = 0;
-      const keywords = lowerQuery.split(" ");
-
-      keywords.forEach((word) => {
-        if (lowerText.includes(word)) {
-          keywordScore += 0.05;
-        }
+      lowerQuery.split(" ").forEach((word) => {
+        if (lowerText.includes(word)) keywordScore += 0.15;
       });
 
       score += keywordScore;
@@ -240,50 +276,27 @@ export async function answerFromBook(question, userId) {
     .filter(Boolean)
     .sort((a, b) => b.score - a.score);
 
-  console.log(
-    "📊 Top 10 scores:",
-    ranked.slice(0, 10).map((r) => r.score),
-  );
+  console.log("📊 Top scores:", ranked.slice(0, 5).map(r => r.score));
 
-  /* =========================
-     SMART THRESHOLD SEARCH
-  ========================= */
-  let threshold = 0.65;
-  let topMatches = [];
+  /* 🔥 CONFIDENCE */
+  const topScore = ranked[0]?.score || 0;
+  const confidence =
+    topScore > 0.75 ? "high" : topScore > 0.55 ? "medium" : "low";
 
-  while (threshold >= 0.3) {
-    topMatches = ranked.filter((r) => r.score > threshold).slice(0, 5);
+  console.log("🎯 Confidence:", confidence);
 
-    if (topMatches.length > 0) {
-      console.log(`✅ Found at threshold: ${threshold}`);
-      break;
-    }
+  let topMatches = ranked.slice(0, 5);
 
-    console.log(`⚠️ Lowering threshold: ${threshold}`);
-    threshold -= 0.1;
+  /* 🔥 RERANK */
+  const bestChunk = await rerankChunks(question, topMatches);
+
+  const context = bestChunk.text;
+
+  let answer = await askAI(context, question);
+
+  if (confidence === "low") {
+    answer = "I'm not fully sure, but here's what I found: " + answer;
   }
 
-  /* =========================
-     FINAL FALLBACK
-  ========================= */
-  if (!topMatches.length) {
-    console.log("🚨 Using fallback");
-    topMatches = ranked.slice(0, 3);
-  }
-
-  /* =========================
-     CHUNK MERGING
-  ========================= */
-  const merged = mergeChunks(topMatches.map((r) => r.text));
-  const context = merged.join("\n\n");
-
-  console.log(
-    "📊 Final Scores:",
-    topMatches.map((r) => r.score),
-  );
-
-  /* =========================
-     FINAL AI RESPONSE
-  ========================= */
-  return await askAI(context, question);
+  return answer;
 }
