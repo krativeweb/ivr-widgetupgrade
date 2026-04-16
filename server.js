@@ -14,6 +14,8 @@ import { conn } from "./db.js";
 import { PORT } from "./config.js";
 import widgetRoutes from "./routes/widget.js";
 import cors from "cors";
+import fetch from "node-fetch";
+
 /* ================= EXPRESS ================= */
 
 const app = express();
@@ -29,7 +31,54 @@ server.listen(PORT, () => {
 
 /* ================= STATES ================= */
 
+
+async function generateGreeting(systemPrompt) {
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: "Start a conversation with a customer." }
+      ]
+    })
+  });
+
+  const data = await res.json();
+  return data.choices[0].message.content;
+}
+
+
+async function aiChatReply(systemPrompt, userText) {
+  try {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userText }
+        ]
+      })
+    });
+
+    const data = await res.json();
+    return data?.choices?.[0]?.message?.content || "Can you please repeat?";
+  } catch (err) {
+    console.error(err);
+    return "Sorry, I didn't understand.";
+  }
+}
 const STATE = {
+  AI_CHAT: "AI_CHAT",     // 🔥 new
   FIRST_QUERY: "FIRST_QUERY",
   SURVEY: "SURVEY",
   QA_LOOP: "QA_LOOP"
@@ -46,8 +95,8 @@ wss.on("connection", async (ws, req) => {
   console.log("🟢 Voice session connected");
 
   const sessionId = Date.now().toString();
-
-  let state = STATE.FIRST_QUERY;
+let state = STATE.AI_CHAT;
+let chatCount = 0;
 
   let questions = [];
   let questionIndex = 0;
@@ -98,7 +147,7 @@ wss.on("connection", async (ws, req) => {
   const encodedId = url.searchParams.get("id");
 
   let userId = 1; // fallback
-  let botIntro = "Welcome to MLO Market."; // fallback
+  // let botIntro = "Welcome to MLO Market."; // fallback
 
   if (encodedId) {
     const decoded = decodeId(encodedId);
@@ -107,18 +156,25 @@ wss.on("connection", async (ws, req) => {
     }
   }
 
+    let botIntro = "Welcome!";
+let systemPrompt = "You are helpful assistant.";
+let role = "assistant";
   try {
-    const [botRows] = await conn.query(
-      `SELECT bot_intro 
-     FROM national_detailer_ai_bot 
-     WHERE user_id = ? 
-     LIMIT 1`,
-      [userId],
-    );
+const [botRows] = await conn.query(
+  `SELECT bot_intro, system_prompt, role 
+   FROM national_detailer_ai_bot 
+   WHERE user_id = ? 
+   LIMIT 1`,
+  [userId],
+);
 
-    if (botRows.length > 0 && botRows[0].bot_intro) {
-      botIntro = botRows[0].bot_intro;
-    }
+
+
+if (botRows.length > 0) {
+  botIntro = botRows[0].bot_intro || botIntro;
+  systemPrompt = botRows[0].system_prompt || systemPrompt;
+  role = botRows[0].role || role;
+}
 
     console.log("🤖 Bot Intro:", botIntro);
   } catch (err) {
@@ -281,7 +337,7 @@ wss.on("connection", async (ws, req) => {
     async (finalText) => {
       if (isClosed) return;
 
-      if (isSpeaking && state !== STATE.FIRST_QUERY) {
+if (isSpeaking && state !== STATE.AI_CHAT && state !== STATE.FIRST_QUERY) {
         console.log("⚠️ Ignoring speech while bot speaking");
         return;
       }
@@ -349,6 +405,29 @@ wss.on("connection", async (ws, req) => {
 
         /* FIRST USER QUESTION */
 
+        // ================= AI CHAT MODE =================
+if (state === STATE.AI_CHAT) {
+  console.log("🤖 AI Chat mode");
+
+  const reply = await aiChatReply(systemPrompt, cleaned);
+
+  await speakAsync(reply);
+
+  chatCount++;
+
+  // 👉 After 2–3 interactions → move to survey
+if (chatCount >=4 ) {
+  await speakAsync("Now I will assist you further. Let me ask you a few questions.");
+
+  state = STATE.SURVEY;
+  questionIndex = 0;
+
+  await askNextQuestion(); // 🔥 auto start
+}
+
+  processing = false;
+  return;
+}
         if (state === STATE.FIRST_QUERY) {
           console.log("📌 First user question captured");
 
@@ -471,7 +550,12 @@ wss.on("connection", async (ws, req) => {
   try {
     console.log("🤖 Starting IVR");
 
-await speakAsync(botIntro);
+await speakAsync(botIntro); // first DB intro
+
+const greeting = await generateGreeting(systemPrompt);
+await speakAsync(greeting); // then AI human-like greeting
+
+
   } catch (err) {
     console.error("❌ Startup error:", err);
 
