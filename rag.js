@@ -163,16 +163,21 @@ async function askAI(context, question) {
       messages: [
         {
           role: "system",
-          content: `
+      content: `
 You are a smart AI assistant.
 
-Rules:
-- Answer ONLY from given context
-- If answer not found, say "I couldn't find that in the data"
-- Be natural, clear, and helpful like ChatGPT
-- Combine multiple context parts if needed
-- Do not copy raw text
-          `,
+Instructions:
+- Use the provided context to answer the question.
+- The answer is likely present — extract it clearly.
+- Rephrase in simple, natural language.
+- Combine multiple pieces if needed.
+
+IMPORTANT:
+- Do NOT say "I couldn't find" unless absolutely nothing matches.
+- Even partial information → try to answer.
+
+Keep answer short and clear.
+`,
         },
         {
           role: "user",
