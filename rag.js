@@ -6,10 +6,31 @@ import Redis from "ioredis";
 /* =========================
    REDIS (CACHE)
 ========================= */
-const redis = new Redis({
-  host: process.env.REDIS_HOST,
-  port: process.env.REDIS_PORT,
-});
+const redis = new Redis(
+  process.env.REDIS_URL || {
+    host: process.env.REDIS_HOST,
+    port: 6379,
+    password: process.env.REDIS_PASSWORD,
+    tls: {},
+
+    maxRetriesPerRequest: null,
+    enableReadyCheck: false,
+
+    retryStrategy: (times) => {
+      console.log("🔄 Redis retry:", times);
+      return Math.min(times * 200, 5000);
+    },
+  }
+);
+
+// ✅ ADD THESE (IMPORTANT)
+redis.on("connect", () => console.log("✅ Redis connected"));
+redis.on("ready", () => console.log("🚀 Redis ready"));
+redis.on("error", (err) =>
+  console.log("❌ Redis error handled:", err.message)
+);
+redis.on("close", () => console.log("⚠️ Redis closed"));
+redis.on("reconnecting", () => console.log("🔄 Redis reconnecting..."));
 
 /* =========================
    COSINE SIMILARITY (SAFE)
