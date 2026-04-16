@@ -1,0 +1,37 @@
+{
+  "name": "browser-ai-ivr",
+  "version": "1.0.0",
+  "description": "Browser-based AI Voice IVR with Deepgram STT, ElevenLabs TTS, Emotion Detection, RAG, and GPT Summary",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": [
+    "ai",
+    "ivr",
+    "voice-bot",
+    "deepgram",
+    "elevenlabs",
+    "openai",
+    "emotion-detection",
+    "websocket",
+    "browser-voice"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "17.3.1",
+    "express": "5.2.1",
+    "mysql2": "3.18.2",
+    "node-fetch": "3.3.2",
+    "openai": "6.25.0",
+    "ws": "8.19.0",
+    "cors": "^2.8.5",
+    "ioredis": "5.10.1"
+  },
+  "devDependencies": {
+    "nodemon": "3.1.14"
+  }
+}
