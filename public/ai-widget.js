@@ -616,7 +616,7 @@ document.getElementById("voice-wave").style.display = "none";
 const encodedId = getScriptParam("id");
 
 if (encodedId) {
-  fetch(`https://aibot.thinkbotai.cloud/api/widget-user?id=${encodedId}`)
+  fetch(`https://ivr-widgetupgrade.onrender.com/api/widget-user?id=${encodedId}`)
     .then((res) => res.json())
     .then((res) => {
       if (res.success) {
@@ -718,7 +718,7 @@ function connectSocket(){
 const encodedId = getScriptParam("id") || "";
 
 ws = new WebSocket(
-  `wss://aibot.thinkbotai.cloud/ws/browser-call?id=${encodedId}`,
+  `wss://https://ivr-widgetupgrade.onrender.com/ws/browser-call?id=${encodedId}`,
 );
 
     ws.onopen = () => {
