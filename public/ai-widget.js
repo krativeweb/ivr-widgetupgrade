@@ -718,7 +718,7 @@ function connectSocket(){
 const encodedId = getScriptParam("id") || "";
 
 ws = new WebSocket(
-  `wss://https://ivr-widgetupgrade.onrender.com/ws/browser-call?id=${encodedId}`,
+  `wss://ivr-widgetupgrade.onrender.com/ws/browser-call?id=${encodedId}`,
 );
 
     ws.onopen = () => {
