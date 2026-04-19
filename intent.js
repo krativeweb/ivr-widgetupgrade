@@ -136,9 +136,10 @@ if (t.split(" ").length <= 2) {
 
     const result = json.choices?.[0]?.message?.content?.trim().toUpperCase();
 
-    if (result === "QUESTION") return "QUESTION";
+if (result === "BOOK_APPOINTMENT") return "BOOK_APPOINTMENT";
+if (result === "QUESTION") return "QUESTION";
 
-    return "ANSWER";
+return "ANSWER";
   } catch (err) {
     return "ANSWER";
   }
