@@ -145,20 +145,20 @@ wss.on("connection", async (ws, req) => {
   console.log("🟢 Voice session connected");
 
   const sessionId = Date.now().toString();
-let state = STATE.AI_CHAT;
-let chatCount = 0;
+  let state = STATE.AI_CHAT;
+  let chatCount = 0;
 
   let questions = [];
   let questionIndex = 0;
   let answers = [];
-let appointmentData = {
-  name: "",
-  phone: "",
-  email: "",
-  time: "",
-  purpose: ""
-};
-  
+  let appointmentData = {
+    name: "",
+    phone: "",
+    email: "",
+    time: "",
+    purpose: ""
+  };
+
   let firstUserQuestion = null;
 
   let processing = false;
@@ -214,25 +214,25 @@ let appointmentData = {
     }
   }
 
-    let botIntro = "Welcome!";
-let systemPrompt = "You are helpful assistant.";
-let role = "assistant";
+  let botIntro = "Welcome!";
+  let systemPrompt = "You are helpful assistant.";
+  let role = "assistant";
   try {
-const [botRows] = await conn.query(
-  `SELECT bot_intro, system_prompt, role 
+    const [botRows] = await conn.query(
+      `SELECT bot_intro, system_prompt, role 
    FROM national_detailer_ai_bot 
    WHERE user_id = ? 
    LIMIT 1`,
-  [userId],
-);
+      [userId],
+    );
 
 
 
-if (botRows.length > 0) {
-  botIntro = botRows[0].bot_intro || botIntro;
-  systemPrompt = botRows[0].system_prompt || systemPrompt;
-  role = botRows[0].role || role;
-}
+    if (botRows.length > 0) {
+      botIntro = botRows[0].bot_intro || botIntro;
+      systemPrompt = botRows[0].system_prompt || systemPrompt;
+      role = botRows[0].role || role;
+    }
 
     console.log("🤖 Bot Intro:", botIntro);
   } catch (err) {
@@ -374,7 +374,7 @@ if (botRows.length > 0) {
 
       await speakAsync("Now I will answer your question.");
 
-      const answer = await answerFromBook(firstUserQuestion,userId);
+      const answer = await answerFromBook(firstUserQuestion, userId);
 
       console.log("📚 RAG answer:", answer);
 
@@ -395,18 +395,18 @@ if (botRows.length > 0) {
     async (finalText) => {
       if (isClosed) return;
 
-if (isSpeaking) {
-  console.log("⚡ BARGE-IN detected → stopping AI");
+      if (isSpeaking) {
+        console.log("⚡ BARGE-IN detected → stopping AI");
 
-  stopSpeaking(sessionId);
+        stopSpeaking(sessionId);
 
-  ws.send(JSON.stringify({
-    type: "clear"
-  }));
+        ws.send(JSON.stringify({
+          type: "clear"
+        }));
 
-  queue.length = 0; // 🔥 IMPORTANT
-  isSpeaking = false;
-}
+        queue.length = 0; // 🔥 IMPORTANT
+        isSpeaking = false;
+      }
 
       console.log("🎤 RAW TRANSCRIPT:", finalText);
 
@@ -466,116 +466,116 @@ if (isSpeaking) {
 
           return;
         }
-          if (intent === "BOOK_APPOINTMENT" && state !== STATE.APPOINTMENT) {
-  await speakAsync("Sure, I can arrange that.");
-  state = STATE.APPOINTMENT;
-  processing = false;
-  return;
-}
+        if (intent === "BOOK_APPOINTMENT" && state !== STATE.APPOINTMENT) {
+          await speakAsync("Sure, I can arrange that.");
+          state = STATE.APPOINTMENT;
+          processing = false;
+          return;
+        }
 
         /* FIRST USER QUESTION */
 
         /* FIRST USER QUESTION */
 
 
-                if (state === STATE.APPOINTMENT) {
+        if (state === STATE.APPOINTMENT) {
 
-  const extracted = await extractAppointmentDetails(cleaned);
+          const extracted = await extractAppointmentDetails(cleaned);
 
-  appointmentData.name = extracted.name || appointmentData.name;
-  appointmentData.phone = extracted.phone || appointmentData.phone;
-  appointmentData.email = extracted.email || appointmentData.email;
+          appointmentData.name = extracted.name || appointmentData.name;
+          appointmentData.phone = extracted.phone || appointmentData.phone;
+          appointmentData.email = extracted.email || appointmentData.email;
 
-  if (extracted.date && extracted.time) {
-    appointmentData.time = extracted.date + " " + extracted.time;
-  }
+          if (extracted.date && extracted.time) {
+            appointmentData.time = extracted.date + " " + extracted.time;
+          }
 
-  appointmentData.purpose = extracted.purpose || appointmentData.purpose;
+          appointmentData.purpose = extracted.purpose || appointmentData.purpose;
 
-  const nextField = getNextMissingField(appointmentData);
+          const nextField = getNextMissingField(appointmentData);
 
-  // ✅ ALL DONE → SAVE
-  if (!nextField) {
+          // ✅ ALL DONE → SAVE
+          if (!nextField) {
 
-    console.log("📅 FINAL:", appointmentData);
+            console.log("📅 FINAL:", appointmentData);
 
-    await conn.query(
-      `INSERT INTO appointments 
+            await conn.query(
+              `INSERT INTO appointments 
       (user_id, name, phone, email, time, purpose, created_at)
       VALUES (?, ?, ?, ?, ?, ?, NOW())`,
-      [
-        userId,
-        appointmentData.name,
-        appointmentData.phone,
-        appointmentData.email,
-        appointmentData.time,
-        appointmentData.purpose
-      ]
-    );
+              [
+                userId,
+                appointmentData.name,
+                appointmentData.phone,
+                appointmentData.email,
+                appointmentData.time,
+                appointmentData.purpose
+              ]
+            );
 
-    await speakAsync("Your appointment is booked successfully.");
+            await speakAsync("Your appointment is booked successfully.");
 
-    appointmentData = {
-      name: "",
-      phone: "",
-      email: "",
-      time: "",
-      purpose: ""
-    };
+            appointmentData = {
+              name: "",
+              phone: "",
+              email: "",
+              time: "",
+              purpose: ""
+            };
 
-    state = STATE.QA_LOOP;
-    processing = false; // 🔥 ADD THIS
+            state = STATE.QA_LOOP;
+            processing = false; // 🔥 ADD THIS
 
-    return;
-  }
+            return;
+          }
 
-  // 🔥 ASK ONLY MISSING FIELD
-  if (nextField === "name") {
-    await speakAsync("May I know your name?");
-  }
+          // 🔥 ASK ONLY MISSING FIELD
+          if (nextField === "name") {
+            await speakAsync("May I know your name?");
+          }
 
-  if (nextField === "phone") {
-    await speakAsync("Please share your phone number.");
-  }
+          if (nextField === "phone") {
+            await speakAsync("Please share your phone number.");
+          }
 
-  if (nextField === "email") {
-    await speakAsync("Please share your email address.");
-  }
+          if (nextField === "email") {
+            await speakAsync("Please share your email address.");
+          }
 
-  if (nextField === "time") {
-    await speakAsync("What is your preferred date and time?");
-  }
+          if (nextField === "time") {
+            await speakAsync("What is your preferred date and time?");
+          }
 
-  if (nextField === "purpose") {
-    await speakAsync("What is this regarding?");
-  }
+          if (nextField === "purpose") {
+            await speakAsync("What is this regarding?");
+          }
 
-  processing = false;
-  return;
-}
+          processing = false;
+          return;
+        }
         // ================= AI CHAT MODE =================
-if (state === STATE.AI_CHAT) {
-  console.log("🤖 AI Chat mode");
+        if (state === STATE.AI_CHAT) {
+          console.log("🤖 AI Chat mode");
 
-  const reply = await aiChatReply(systemPrompt, cleaned);
+          const reply = await aiChatReply(systemPrompt, cleaned);
 
-  await speakAsync(reply);
+          await speakAsync(reply);
 
-  chatCount++;
+          chatCount++;
 
-  // 👉 After 2–3 interactions → move to survey
-if (chatCount >=4 ) {
-  await speakAsync("Now I will assist you further. Let me ask you a few questions.");
+          // 👉 After 2–3 interactions → move to survey
+          if (chatCount >= 4) {
+            await speakAsync("Now I will assist you further. Let me ask you a few questions.");
 
-  state = STATE.SURVEY;
-  questionIndex = 0;
+            state = STATE.SURVEY;
+            questionIndex = 0;
 
-  await askNextQuestion(); // 🔥 auto start
-}
+            await askNextQuestion(); // 🔥 auto start
+          }
 
-  processing = false;
-  return;
-}
+          processing = false;
+          return;
+        }
         if (state === STATE.FIRST_QUERY) {
           console.log("📌 First user question captured");
 
@@ -647,7 +647,7 @@ if (chatCount >=4 ) {
         if (state === STATE.QA_LOOP) {
           console.log("📚 Running RAG for follow-up question");
 
-         const answer = await answerFromBook(cleaned, userId);
+          const answer = await answerFromBook(cleaned, userId);
 
           console.log("📚 RAG answer:", answer);
 
@@ -703,10 +703,10 @@ if (chatCount >=4 ) {
   try {
     console.log("🤖 Starting IVR");
 
-await speakAsync(botIntro); // first DB intro
+    await speakAsync(botIntro); // first DB intro
 
-const greeting = await generateGreeting(systemPrompt);
-await speakAsync(greeting); // then AI human-like greeting
+    const greeting = await generateGreeting(systemPrompt);
+    await speakAsync(greeting); // then AI human-like greeting
 
 
   } catch (err) {
