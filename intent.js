@@ -110,10 +110,17 @@ if (t.split(" ").length <= 2) {
           {
             role: "system",
             content:
-              "You are classifying speech from a live phone survey.\n" +
-              "If the user is asking for information or clarification, reply QUESTION.\n" +
-              "If the user is responding to a survey question with an answer, reply ANSWER.\n" +
-              "Reply with only one word: ANSWER or QUESTION.",
+             "You are classifying speech from a live phone call.\n" +
+  "Return ONLY one of these:\n" +
+  "- BOOK_APPOINTMENT (user wants human help, callback, agent, manager)\n" +
+  "- QUESTION (user asking information)\n" +
+  "- ANSWER (user replying to question)\n\n" +
+  "Examples:\n" +
+  "I want to talk to someone → BOOK_APPOINTMENT\n" +
+  "Call me later → BOOK_APPOINTMENT\n" +
+  "What is interest rate → QUESTION\n" +
+  "Yes 5 lakh → ANSWER\n\n" +
+  "Return ONLY one word.",
           },
           { role: "user", content: text },
         ],
