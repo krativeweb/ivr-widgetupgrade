@@ -683,17 +683,13 @@ let glowAnimationId = null;
 
 // ✅ ADD THIS (avatar click)
 document.querySelector(".avatar-wrapper").onclick = async () => {
-
-
+  if (isCallActive) return; // 🔥 prevent double start
 
   try {
     await startCall();
-    // alert("CALL STARTED");
   } catch (e) {
-    // alert("ERROR: " + e.message);
     console.error(e);
   }
-
 };
 
 document.addEventListener("click", function(e){
@@ -1145,7 +1141,7 @@ source.connect(analyserSpeak);
 analyserSpeak.connect(audioContext.destination);
 
 // 🔥 ADD THIS (important)
-// source.connect(audioContext.destination)
+source.connect(audioContext.destination);
 
 const data = new Uint8Array(analyserSpeak.frequencyBinCount);
 
@@ -1220,8 +1216,20 @@ source.start();
 
 
 function clearAudioQueue(){
-audioQueue=[];
-isPlaying=false;
+  audioQueue = [];
+  isPlaying = false;
+
+  // 🔥 STOP CURRENT AUDIO IMMEDIATELY
+  if (currentSource) {
+    try {
+      currentSource.onended = null;
+      currentSource.stop();
+    } catch (e) {}
+    currentSource = null;
+  }
+
+  // 🔥 RESET UI
+  document.querySelector(".glow-ring")?.classList.remove("speaking");
 }
 
 
