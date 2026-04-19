@@ -15,6 +15,11 @@ if (
 ) {
   return "END";
 }
+  if (
+  /\b(talk to|speak to|connect me|transfer me|human|agent|representative|manager|advisor|loan officer|call me|callback|schedule|appointment|meeting|help me|support|assist)\b/.test(t)
+) {
+  return "BOOK_APPOINTMENT";
+}
 
   /* ================= STOP ================= */
   if (
