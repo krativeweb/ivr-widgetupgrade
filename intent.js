@@ -85,9 +85,9 @@ if (
 
   try {
     // Do NOT use GPT for very short inputs
-    if (t.split(" ").length <= 3) {
-      return "ANSWER";
-    }
+if (t.split(" ").length <= 2) {
+  return "ANSWER";
+}
 
     // Do NOT use GPT if contains numbers (likely survey answer)
     if (/\d+/.test(t)) {
