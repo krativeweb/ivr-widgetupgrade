@@ -15,11 +15,7 @@ if (
 ) {
   return "END";
 }
-  if (
-  /\b(talk to|speak to|connect me|transfer me|human|agent|representative|manager|advisor|loan officer|call me|callback|schedule|appointment|meeting|help me|support|assist)\b/.test(t)
-) {
-  return "BOOK_APPOINTMENT";
-}
+
 
   /* ================= STOP ================= */
   if (
@@ -28,6 +24,11 @@ if (
     return "STOP";
   }
 
+    if (
+  /\b(talk to|speak to|connect me|transfer me|human|agent|representative|manager|advisor|loan officer|call me|callback|schedule|appointment|meeting|help me|support|assist)\b/.test(t)
+) {
+  return "BOOK_APPOINTMENT";
+}
   /* ================= SKIP ================= */
   if (
     /\b(skip|next|move on|continue|go ahead|proceed|another question)\b/.test(t)
@@ -90,9 +91,9 @@ if (t.split(" ").length <= 2) {
 }
 
     // Do NOT use GPT if contains numbers (likely survey answer)
-    if (/\d+/.test(t)) {
-      return "ANSWER";
-    }
+if (/\d+/.test(t) && t.split(" ").length <= 3) {
+  return "ANSWER";
+}
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 2500); // faster timeout
