@@ -41,13 +41,13 @@ const ws = new WebSocket(url, {
       return;
     }
 
-    console.log("📡 FULL MESSAGE:", JSON.stringify(data));
+    // console.log("📡 FULL MESSAGE:", JSON.stringify(data));
 
     if (data.type !== "TurnInfo") return;
 
     const turn = data.event;
 
-    console.log("🔎 Turn event:", turn);
+    // console.log("🔎 Turn event:", turn);
 
     const transcript = data.transcript;
 
