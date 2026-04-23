@@ -438,40 +438,41 @@ wss.on("connection", async (ws, req) => {
 
         console.log("🧠 Intent:", intent);
 
-        /* STOP */
-
-        if (intent === "STOP") {
-          console.log("🛑 STOP detected");
-
-          await speakAsync("Thank you for calling. Goodbye.");
-
-          ws.close();
-          return;
-        }
         if (intent === "END") {
-          console.log("👋 Conversation ended by user");
+  await speakAsync("Thank you for calling. Goodbye.");
+  ws.close();
+  return;
+}
 
-          await speakAsync("Thank you for calling MLO Market. Goodbye.");
+// STOP
+if (intent === "STOP") {
+  await speakAsync("Thank you for calling. Goodbye.");
+  ws.close();
+  return;
+}
 
-          // 🔥 SEND END SIGNAL
-          ws.send(
-            JSON.stringify({
-              type: "end_call",
-            }),
-          );
+// APPOINTMENT (ANYTIME)
+if (intent === "BOOK_APPOINTMENT" && state !== STATE.APPOINTMENT) {
+  await speakAsync("Sure, I can arrange that.");
+  state = STATE.APPOINTMENT;
+  processing = false;
+  return;
+}
 
-          setTimeout(() => {
-            ws.close();
-          }, 500);
+// QUESTION (ANYTIME 🔥)
+if (intent === "QUESTION" && state !== STATE.APPOINTMENT) {
+  console.log("📚 Instant question detected");
 
-          return;
-        }
-        if (intent === "BOOK_APPOINTMENT" && state !== STATE.APPOINTMENT) {
-          await speakAsync("Sure, I can arrange that.");
-          state = STATE.APPOINTMENT;
-          processing = false;
-          return;
-        }
+  const answer = await answerFromBook(cleaned, userId);
+
+  await speakAsync(answer);
+
+  // 🔁 DO NOT CHANGE STATE → return to same flow
+  processing = false;
+  return;
+}
+
+
 
         /* FIRST USER QUESTION */
 
