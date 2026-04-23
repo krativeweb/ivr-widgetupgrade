@@ -1219,7 +1219,6 @@ function clearAudioQueue(){
   audioQueue = [];
   isPlaying = false;
 
-  // 🔥 STOP CURRENT AUDIO IMMEDIATELY
   if (currentSource) {
     try {
       currentSource.onended = null;
@@ -1228,7 +1227,6 @@ function clearAudioQueue(){
     currentSource = null;
   }
 
-  // 🔥 RESET UI
   document.querySelector(".glow-ring")?.classList.remove("speaking");
 }
 
