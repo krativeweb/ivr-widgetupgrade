@@ -151,6 +151,7 @@ wss.on("connection", async (ws, req) => {
   let questions = [];
   let questionIndex = 0;
   let answers = [];
+  let currentRequestId = 0;
   let appointmentData = {
     name: "",
     phone: "",
@@ -167,6 +168,7 @@ wss.on("connection", async (ws, req) => {
 
   let silenceTimer = null;
   let surveyFinished = false;
+
 
   /* ================= SPEECH QUEUE ================= */
 
@@ -363,11 +365,9 @@ wss.on("connection", async (ws, req) => {
 
     console.log("📊 Generating summary");
 
-    const summary = await generateSummary(answers);
+ const summary = await generateSummary(answers);
 
-    console.log("📊 Summary:", summary);
-
-    await speakAsync(summary);
+await speakAsync(summary);
 
     if (firstUserQuestion) {
       console.log("📚 Running RAG for first question:", firstUserQuestion);
@@ -430,7 +430,8 @@ wss.on("connection", async (ws, req) => {
       }
 
       console.log("👤 User said:", cleaned);
-
+currentRequestId++;
+const requestId = currentRequestId;
       try {
         console.log("🔎 Detecting emotion + intent...");
 
@@ -463,9 +464,11 @@ if (intent === "BOOK_APPOINTMENT" && state !== STATE.APPOINTMENT) {
 if (intent === "QUESTION" && state !== STATE.APPOINTMENT) {
   console.log("📚 Instant question detected");
 
-  const answer = await answerFromBook(cleaned, userId);
+const answer = await answerFromBook(cleaned, userId);
 
-  await speakAsync(answer);
+if (requestId !== currentRequestId) return;
+
+await speakAsync(answer);
 
   // 🔁 DO NOT CHANGE STATE → return to same flow
   processing = false;
@@ -558,10 +561,9 @@ if (intent === "QUESTION" && state !== STATE.APPOINTMENT) {
         if (state === STATE.AI_CHAT) {
           console.log("🤖 AI Chat mode");
 
-          const reply = await aiChatReply(systemPrompt, cleaned);
-
-          await speakAsync(reply);
-
+       const reply = await aiChatReply(systemPrompt, cleaned);
+if (requestId !== currentRequestId) return;
+await speakAsync(reply);
           chatCount++;
 
           // 👉 After 2–3 interactions → move to survey
@@ -645,20 +647,23 @@ if (intent === "QUESTION" && state !== STATE.APPOINTMENT) {
         /* ================= APPOINTMENT ================= */
 
 
-        if (state === STATE.QA_LOOP) {
-          console.log("📚 Running RAG for follow-up question");
+  if (state === STATE.QA_LOOP) {
+  console.log("📚 Running RAG for follow-up question");
 
-          const answer = await answerFromBook(cleaned, userId);
+  const answer = await answerFromBook(cleaned, userId);
 
-          console.log("📚 RAG answer:", answer);
+  // 🔥 VERY IMPORTANT
+  if (requestId !== currentRequestId) return;
 
-          await speakAsync(answer);
+  console.log("📚 RAG answer:", answer);
 
-          await speakAsync("Do you have any other question?");
+  await speakAsync(answer);
 
-          processing = false;
-          return;
-        }
+  await speakAsync("Do you have any other question?");
+
+  processing = false;
+  return;
+}
       } catch (err) {
         console.error("❌ Processing error:", err);
       }
