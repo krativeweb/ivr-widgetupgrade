@@ -433,14 +433,13 @@ await speakAsync(summary);
       }
 
       console.log("👤 User said:", cleaned);
-currentRequestId++;
-const requestId = currentRequestId;
+const requestId = ++currentRequestId;
       try {
         console.log("🔎 Detecting emotion + intent...");
 
         const intent = await detectIntent(cleaned);
 
-        console.log("🧠 Intent:", intent);
+     console.log("🧠 Intent:", intent, "| Text:", cleaned);
 
         if (intent === "END") {
   await speakAsync("Thank you for calling. Goodbye.");
