@@ -395,18 +395,21 @@ await speakAsync(summary);
     async (finalText) => {
       if (isClosed) return;
 
-      if (isSpeaking) {
-        console.log("⚡ BARGE-IN detected → stopping AI");
+  if (isSpeaking) {
+  console.log("⚡ BARGE-IN detected → stopping AI");
 
-        stopSpeaking(sessionId);
+  stopSpeaking(sessionId);
 
-        ws.send(JSON.stringify({
-          type: "clear"
-        }));
+  ws.send(JSON.stringify({
+    type: "clear"
+  }));
 
-        queue.length = 0; // 🔥 IMPORTANT
-        isSpeaking = false;
-      }
+  queue.length = 0;
+  isSpeaking = false;
+
+  currentRequestId++; // 🔥 ADD THIS LINE
+      processing = false; // reset lock
+}
 
       console.log("🎤 RAW TRANSCRIPT:", finalText);
 
