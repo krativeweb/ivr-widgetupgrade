@@ -617,7 +617,7 @@ const reply = await aiChatReply(systemPrompt, cleaned, history);
 
           chatCount++;
 
-          if (chatCount >= 3) {
+          if (chatCount >= 6) {
             await speakAsync("Now I will ask you a few questions.");
 
             state = STATE.SURVEY;
