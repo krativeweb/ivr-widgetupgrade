@@ -104,28 +104,37 @@ async function generateGreeting(systemPrompt) {
 
 async function aiChatReply(systemPrompt, userText) {
   try {
+    history.push({ role: "user", content: userText });
+
     const res = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
         model: "gpt-4o-mini",
+        temperature: 0.7,
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: userText }
+          ...history.slice(-6)
         ]
       })
     });
 
     const data = await res.json();
-    return data?.choices?.[0]?.message?.content || "Can you please repeat?";
+    const reply = data.choices[0].message.content;
+
+    history.push({ role: "assistant", content: reply });
+
+    return reply;
+
   } catch (err) {
     console.error(err);
     return "Sorry, I didn't understand.";
   }
 }
+
 const STATE = {
   AI_CHAT: "AI_CHAT",     // 🔥 new
   CONFIRM_END: "CONFIRM_END",
@@ -170,6 +179,7 @@ wss.on("connection", async (ws, req) => {
   let silenceTimer = null;
   let surveyFinished = false;
    let endPromptAsked = false;
+let history = [];
 
   /* ================= SPEECH QUEUE ================= */
 
@@ -291,8 +301,9 @@ wss.on("connection", async (ws, req) => {
   /* ================= CLEANUP ================= */
 
   function cleanup() {
+    
     if (isClosed) return;
-
+history = [];
     console.log("🧹 Cleaning session:", sessionId);
 
     if (silenceTimer) clearTimeout(silenceTimer);
