@@ -101,8 +101,7 @@ async function generateGreeting(systemPrompt) {
   return data.choices[0].message.content;
 }
 
-
-async function aiChatReply(systemPrompt, userText) {
+async function aiChatReply(systemPrompt, userText, history) {
   try {
     history.push({ role: "user", content: userText });
 
@@ -123,7 +122,13 @@ async function aiChatReply(systemPrompt, userText) {
     });
 
     const data = await res.json();
-    const reply = data.choices[0].message.content;
+
+    const reply = data?.choices?.[0]?.message?.content;
+
+    if (!reply) {
+      console.log("⚠️ Empty response:", data);
+      return "Can you repeat that?";
+    }
 
     history.push({ role: "assistant", content: reply });
 
@@ -131,7 +136,7 @@ async function aiChatReply(systemPrompt, userText) {
 
   } catch (err) {
     console.error(err);
-    return "Sorry, I didn't understand.";
+    return "Can you repeat that?";
   }
 }
 
