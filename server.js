@@ -169,7 +169,7 @@ wss.on("connection", async (ws, req) => {
 
   let silenceTimer = null;
   let surveyFinished = false;
-
+   let endPromptAsked = false;
 
   /* ================= SPEECH QUEUE ================= */
 
@@ -453,8 +453,22 @@ wss.on("connection", async (ws, req) => {
             await speakAsync("Great, let me take some details.");
             state = STATE.APPOINTMENT;
           } else if (no.includes(cleaned)) {
+
+            queue.length = 0;
+            currentRequestId++;
+
             await speakAsync("Thank you for calling. Goodbye.");
-            ws.close();
+
+            ws.send(JSON.stringify({ type: "end_call" }));
+
+            processing = true;
+            isClosed = true;
+
+            setTimeout(() => {
+              ws.close();
+            }, 300);
+
+            return;
           } else {
             await speakAsync("Please say yes or no.");
           }
@@ -502,18 +516,20 @@ wss.on("connection", async (ws, req) => {
             queue.length = 0;
             currentRequestId++;
 
-            // 🎤 FINAL SPEAK (no overlap)
+            // 🎤 final speak
             await speakAsync("Your appointment is booked successfully.");
             await speakAsync("Thank you for calling. Goodbye.");
 
-            // 🔒 prevent further processing
+            // 🔔 notify frontend BEFORE closing
+            ws.send(JSON.stringify({ type: "end_call" }));
+
             processing = true;
             isClosed = true;
 
-            // 🔌 CLOSE CONNECTION CLEANLY
+            // 🔌 close after small delay
             setTimeout(() => {
               ws.close();
-            }, 500);
+            }, 300);
 
             return;
           }
@@ -535,9 +551,20 @@ wss.on("connection", async (ws, req) => {
         // ================= INTENTS =================
 
         if (intent === "END" || intent === "STOP") {
-          await speakAsync(
-            "Before ending, would you like to book an appointment?"
-          );
+
+          if (endPromptAsked) {
+            processing = false;
+            return;
+          }
+
+          endPromptAsked = true;
+
+          // 🛑 STOP OLD AUDIO (prevents overlap)
+          queue.length = 0;
+          currentRequestId++;
+
+          await speakAsync("Before ending, would you like to book an appointment?");
+
           state = STATE.CONFIRM_END;
           processing = false;
           return;
