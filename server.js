@@ -610,8 +610,7 @@ history = [];
         // ================= STATES =================
 
         if (state === STATE.AI_CHAT) {
-          const reply = await aiChatReply(systemPrompt, cleaned);
-
+const reply = await aiChatReply(systemPrompt, cleaned, history);
           if (requestId !== currentRequestId) return;
 
           await speakAsync(reply);
