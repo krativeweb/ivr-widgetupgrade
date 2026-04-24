@@ -498,19 +498,24 @@ wss.on("connection", async (ws, req) => {
             ]
           );
 
-          await speakAsync("Your appointment is booked successfully.");
+  // 🛑 STOP EVERYTHING
+queue.length = 0;
+currentRequestId++;
 
-          appointmentData = {
-            name: "",
-            phone: "",
-            email: "",
-            time: "",
-            purpose: ""
-          };
+// 🎤 FINAL SPEAK (no overlap)
+await speakAsync("Your appointment is booked successfully.");
+await speakAsync("Thank you for calling. Goodbye.");
 
-          state = STATE.QA_LOOP;
-          processing = false;
-          return;
+// 🔒 prevent further processing
+processing = true;
+isClosed = true;
+
+// 🔌 CLOSE CONNECTION CLEANLY
+setTimeout(() => {
+  ws.close();
+}, 500);
+
+return;
         }
 
         const prompts = {
